@@ -31,7 +31,7 @@ Command Line Options:
 
 #### Display a fading blue background at 1920x1080
 
-`.\NdiTestPatternGenerator.exe -w 1920 -h 1080 -n "Sender 1"
+`.\NdiTestPatternGenerator.exe -w 1920 -h 1080 -n "Sender 1"`
 
 #### Display a scrolling white line at 1920x1080
 
