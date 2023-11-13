@@ -26,3 +26,17 @@ Command Line Options:
   --version       Display version information.
 
 ```
+
+### Example Usage
+
+#### Display a fading blue background at 1920x1080
+
+`.\NdiTestPatternGenerator.exe -w 1920 -h 1080 -n "Sender 1"
+
+#### Display a scrolling white line at 1920x1080
+
+`.\NdiTestPatternGenerator.exe -w 1920 -h 1080 -n "Sender 1" --whiteline`
+
+#### Display a scrolling white line at 1920x1080 with random noise
+
+`.\NdiTestPatternGenerator.exe -w 1920 -h 1080 -n "Sender 1" --whiteline --mode noise`

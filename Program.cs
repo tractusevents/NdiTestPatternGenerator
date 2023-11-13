@@ -110,7 +110,8 @@ unsafe
         timestamp = 0
     };
 
-    Console.WriteLine($"NDI Sender started. Sender name: {parserResult.Value.Name}.");
+    Console.WriteLine($"NDI Signal Generator started. Sender name: {parserResult.Value.Name}.");
+    Console.WriteLine("Created by Tractus Events - Grab the source code at https://github.com/tractusevents/NdiTestPatternGenerator\r\n");
     Console.WriteLine("Ctrl+C to exit.");
 
     while (true)
