@@ -1,0 +1,37 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+	  <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	  <ApplicationIcon>testpatternlogo.ico</ApplicationIcon>
+	  <Title>Tractus Test Pattern Generator for NDI</Title>
+	  <Company>Tractus Events by Northern HCI Solutions Inc.</Company>
+	  <AssemblyVersion>2023.11.13.1</AssemblyVersion>
+	  <PackageIcon>testpatternlogo.png</PackageIcon>
+	  <Version>$(AssemblyVersion)</Version>
+	  <FileVersion>$(AssemblyVersion)</FileVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="testpatternlogo.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommandLineParser" Version="2.9.1" />
+    <PackageReference Include="NDILibDotNetCoreBase" Version="2023.11.7.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="font.bmp">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="testpatternlogo.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
+</Project>
