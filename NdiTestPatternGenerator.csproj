@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 	  <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -16,6 +16,7 @@
 	  <RepositoryUrl>https://github.com/tractusevents/NdiTestPatternGenerator</RepositoryUrl>
 	  <RepositoryType>git</RepositoryType>
 	  <Copyright>Tractus Events by Northern HCI Solutions Inc.</Copyright>
+      <PublishAot>true</PublishAot>
   </PropertyGroup>
 
   <ItemGroup>
