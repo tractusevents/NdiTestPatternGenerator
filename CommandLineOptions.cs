@@ -31,7 +31,7 @@ public class CommandLineOptions
     [Option(longName: "whiteline", Required = false, HelpText = "Display the sweeping white line", Default = false)]
     public bool WhiteLine { get; set; }
 
-    [Option(longName: "mode", Required = false, HelpText = "Background mode. Expecting 'blue', 'noise'", Default = "blue")]
+    [Option(longName: "mode", Required = false, HelpText = "Background mode. Expecting 'blue', 'noise', 'colorbar'", Default = "blue")]
     public string Mode { get; set; }
 
 }
