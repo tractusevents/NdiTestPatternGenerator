@@ -1,42 +1,19 @@
 # NDI Test Pattern Generator
 
-Generates either pseudorandom noise, or a blue fading signal.
+Generates either a set of color bars, or a blue fading signal at any resolution and frame rate (limited by your PC's capabilities).
+
+Also sends out a 440Hz tone across an arbitrary number of audio channels at a user-selectable sample rate.
 
 Used for testing NDI feeds.
 
-```
-NdiTestPatternGenerator 2023.11.13.1
-Copyright (C) 2023 Tractus Events by Northern HCI Solutions Inc.
+At startup, you can either specify a preset with the `-p=` parameter, or specify custom settings.
 
-Command Line Options:
-  -w, --width     Required. Horizontal resolution in pixels
+#### Built-In Presets
 
-  -h, --height    Required. Vertical resolution in pixels
-
-  -n, --name      Required. Name of this NDI sender instance
-
-  -f, --fps       (Default: 30) Frames per second.
-
-  --whiteline     (Default: false) Display the sweeping white line
-
-  --mode          (Default: blue) Background mode. Expecting 'blue', 'noise'
-
-  --help          Display this help screen.
-
-  --version       Display version information.
-
-```
-
-### Example Usage
-
-#### Display a fading blue background at 1920x1080
-
-`.\NdiTestPatternGenerator.exe -w 1920 -h 1080 -n "Sender 1"`
-
-#### Display a scrolling white line at 1920x1080
-
-`.\NdiTestPatternGenerator.exe -w 1920 -h 1080 -n "Sender 1" --whiteline`
-
-#### Display a scrolling white line at 1920x1080 with random noise
-
-`.\NdiTestPatternGenerator.exe -w 1920 -h 1080 -n "Sender 1" --whiteline --mode noise`
+Preset Flag|Details
+---|----
+4k60|3840x2160 @ 60 FPS, 2 audio channels, 48kHz audio - color bars
+4k60b|3840x2160 @ 60 FPS, 2 audio channels, 48kHz audio - blue background
+1080p60|1920x1080 @ 60 FPS, 2 audio channels, 48kHz audio - color bars
+1080p30|1920x1080 @ 30 FPS, 2 audio channels, 48kHz audio - color bars
+720|1280x720 @ 60 FPS, 2 audio channels, 48kHz audio - color bars
