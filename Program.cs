@@ -1,23 +1,221 @@
-﻿using CommandLine;
-using NewTek;
+﻿using NewTek;
+using NewTek.NDI;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Xml;
+using System.Xml.Serialization;
+
+public class LaunchOptions
+{
+    public int Width;
+    public int Height;
+    public int FrameRate;
+    public int AudioChannels;
+    public int AudioRate;
+    public string SourceName;
+    public string MachineName;
+    public string Mode;
+    public bool WhiteBar;
+
+}
 
 internal class Program
 {
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SignalGeneratorCommandLineOptions))]
-    private static void Main(string[] args)
+    private static LaunchOptions GetLaunchOptions(string[] args)
     {
-        var parserResult = Parser.Default.ParseArguments<SignalGeneratorCommandLineOptions>(args);
+        var knownMachineName = args.Any(x => x.StartsWith("-m="))
+            ? args.First(x => x.StartsWith("-m=")).Split('=')[1]
+            : string.Empty;
 
-        if (parserResult.Errors.Any())
+        var knownSourceName = args.Any(x => x.StartsWith("-s="))
+            ? args.First(x => x.StartsWith("-s=")).Split('=')[1]
+            : string.Empty;
+
+        var skipMachineName = args.Any(x => x == "-nm");
+
+        var toReturn = new LaunchOptions()
         {
-            return;
+            MachineName = knownMachineName,
+            SourceName = knownSourceName,
+            AudioChannels = 2,
+            AudioRate = 48000,
+        };
+
+        var preset = string.Empty;
+
+        if (args.Any(x => x.StartsWith("-p=")))
+        {
+            preset = args.FirstOrDefault(x => x.StartsWith("-p=")).Split("=")[1];
+        }
+        else
+        {
+            Console.Write("Use preset (4k60, 1080p60, 1080p30, 720, or empty for none) >");
+            preset = Console.ReadLine();
         }
 
-        var videoFrameWidth = parserResult.Value.Width;
-        var videoFrameHeight = parserResult.Value.Height;
+        if (preset == "4k60")
+        {
+            toReturn.Width = 3840;
+            toReturn.Height = 2160;
+            toReturn.FrameRate = 60;
+            toReturn.WhiteBar = true;
+            toReturn.Mode = "colorbar";
+        }
+        else if (preset == "4k60b")
+        {
+            toReturn.Width = 3840;
+            toReturn.Height = 2160;
+            toReturn.FrameRate = 60;
+            toReturn.WhiteBar = true;
+            toReturn.Mode = "blue";
+        }
+        else if (preset == "1080p60")
+        {
+            toReturn.Width = 1920;
+            toReturn.Height = 1080;
+            toReturn.FrameRate = 60;
+            toReturn.WhiteBar = true;
+            toReturn.Mode = "colorbar";
+        }
+        else if (preset == "1080p30")
+        {
+            toReturn.Width = 1920;
+            toReturn.Height = 1080;
+            toReturn.FrameRate = 30;
+            toReturn.WhiteBar = true;
+            toReturn.Mode = "colorbar";
+        }
+        else if (preset == "720")
+        {
+            toReturn.Width = 1280;
+            toReturn.Height = 720;
+            toReturn.FrameRate = 60;
+            toReturn.WhiteBar = true;
+            toReturn.Mode = "colorbar";
+        }
+        else
+        {
+            var input = string.Empty;
+            var videoFrameWidth = 0;
+            var videoFrameHeight = 0;
+            var frameRate = 0;
+
+            while (!int.TryParse(input, out videoFrameWidth) && videoFrameWidth <= 0)
+            {
+                Console.Write("Horizontal Resolution > ");
+                input = Console.ReadLine();
+            }
+
+            input = string.Empty;
+            while (!int.TryParse(input, out videoFrameHeight) && videoFrameHeight <= 0)
+            {
+                Console.Write("Vertical Resolution > ");
+                input = Console.ReadLine();
+            }
+
+            input = string.Empty;
+            while (!int.TryParse(input, out frameRate) && frameRate <= 0)
+            {
+                Console.Write("FPS > ");
+                input = Console.ReadLine();
+            }
+
+
+            input = string.Empty;
+            do
+            {
+                Console.Write("Mode (blue, colorbar) > ");
+                input = Console.ReadLine();
+            } while (string.IsNullOrEmpty(input));
+
+            var mode = input;
+            input = string.Empty;
+
+
+            Console.Write("White moving bar (Y/N) > ");
+            input = Console.ReadLine();
+
+            var movingBar = input?.Contains("y", StringComparison.InvariantCultureIgnoreCase) == true;
+
+            toReturn.Width = videoFrameWidth;
+            toReturn.Height = videoFrameHeight;
+            toReturn.FrameRate = frameRate;
+            toReturn.WhiteBar = movingBar;
+            toReturn.Mode = mode;
+
+            input = string.Empty;
+
+            var audioSampleRate = 0;
+
+            while(!int.TryParse(input, out audioSampleRate) && (audioSampleRate <= 11025 || audioSampleRate > 96000))
+            {
+                Console.Write("Audio sample rate in Hz (44100 to 96000) >");
+                input = Console.ReadLine();
+            }
+
+            input = string.Empty;
+            var channels = 0;
+
+            while (!int.TryParse(input, out channels) && (channels <= 0))
+            {
+                Console.Write("Audio channel count (1 or more) >");
+                input = Console.ReadLine();
+            }
+
+            toReturn.AudioChannels = channels;
+            toReturn.AudioRate = audioSampleRate;
+        }
+
+
+
+        if (string.IsNullOrEmpty(knownMachineName) && !skipMachineName)
+        {
+            Console.Write("Custom Machine Name (Enter to skip) > ");
+            var customMachineName = Console.ReadLine();
+
+            if (!string.IsNullOrEmpty(customMachineName))
+            {
+                var envDetails = $$"""{"ndi": { "machinename": "{{customMachineName}}" } }""";
+                File.WriteAllText("ndi-config.v1.json", envDetails);
+                var pathToEnv = Path.Combine(Environment.CurrentDirectory, "ndi-config.v1.json");
+                Environment.SetEnvironmentVariable("NDI_CONFIG_DIR", Environment.CurrentDirectory);
+
+                Console.WriteLine($"WARNING: Machine name has been overridden to {customMachineName}");
+            }
+
+            knownMachineName = customMachineName;
+        }
+
+
+        if (string.IsNullOrEmpty(knownSourceName))
+        {
+            knownSourceName = string.Empty;
+            do
+            {
+                Console.Write("NDI Source Name > ");
+                knownSourceName = Console.ReadLine();
+            } while (string.IsNullOrEmpty(knownSourceName));
+        }
+
+        toReturn.SourceName = knownSourceName;
+        toReturn.MachineName = knownMachineName;
+
+        return toReturn;
+    }
+
+    private unsafe static void Main(string[] args)
+    {
+        var launchOptions = GetLaunchOptions(args);
+
+        var audioChannels = launchOptions.AudioChannels;
+        var audioSampleRate = launchOptions.AudioRate;
+
+        using var audioGenerator = new AudioGenerator(audioSampleRate, audioChannels, 440);
+
+        NDIlib.initialize();
+
 
         // This reads in a 1-bit bitmap. This is so we don't have to deal with TTF nonsense.
         // Thanks, ChatGPT.
@@ -50,329 +248,207 @@ internal class Program
 
         // Font has 16 glyphs per row, 6 rows
 
-        var pName = NewTek.NDI.UTF.StringToUtf8(parserResult.Value.Name);
+        var pName = NewTek.NDI.UTF.StringToUtf8(launchOptions.SourceName);
 
         var senderSettings = new NDIlib.send_create_t
         {
             p_ndi_name = pName,
-            clock_video = true
+            clock_video = true,
+            clock_audio = false,
+            //p_groups = UTF.StringToUtf8("hidden")
         };
 
         var senderPtr = NDIlib.send_create(ref senderSettings);
 
         Marshal.FreeHGlobal(pName);
 
-        var videoData = Marshal.AllocHGlobal(4 * videoFrameWidth * videoFrameHeight);
+        var useBlue = launchOptions.Mode == "blue";
+        var useColorBar = launchOptions.Mode == "colorbar";
+
+        var videoDataBuffer1 = Marshal.AllocHGlobal(4 * launchOptions.Width * launchOptions.Height);
+        var videoDataBufferPtr1 = (uint*)videoDataBuffer1.ToPointer();
+
+
+        var bgVideoFrames = useColorBar ? 1
+            : useBlue
+                ? 32
+                : 4;
+
+        var videoBgFrameBuffer = Marshal.AllocHGlobal(4 * launchOptions.Width * launchOptions.Height * bgVideoFrames);
+        var videoBgFrameBufferPtr = (uint*)videoBgFrameBuffer.ToPointer();
+        var videoBgFrameIndex = 0;
+
+        if (useColorBar)
+        {
+            BgHelpers.GenerateColorBarBgFrames(launchOptions, videoBgFrameBufferPtr);
+        }
+        else if (useBlue)
+        {
+            BgHelpers.GenerateBlueBgFrames(launchOptions, videoBgFrameBufferPtr, bgVideoFrames);
+        }
+
+        NDIlib.video_frame_v2_t videoFrame1 = default(NDIlib.video_frame_v2_t);
 
         var averageRunTime = 0l;
         var maxRunTime = 0l;
 
         var stopwatch = new Stopwatch();
 
-        var useNoise = parserResult.Value.Mode == "noise";
-        var useBlue = parserResult.Value.Mode == "blue";
-        var useColorBar = parserResult.Value.Mode == "colorbar";
+        var frameSizeBytes = launchOptions.Width * launchOptions.Height * 4;
 
-        var displayWhiteLine = parserResult.Value.WhiteLine;
+        var videoPtr = (uint*)videoDataBufferPtr1;
 
-        // Calling Random.Next is sloooooooooooow. So we preallocate a random array of uint pixel data.
-        var randomMaxIndex = 1024;
-        var randomArray = Marshal.AllocHGlobal(randomMaxIndex * 4);
-        var randomState = 0;
+        var r = 0;
+        var g = 0;
+        var b = 0;
 
-        unsafe
+        var whiteLineVerticalX = 0;
+        var whiteLineVerticalXDirection = 1;
+
+        var bDirection = 1;
+        var frames = 0;
+
+        videoFrame1 = new NDIlib.video_frame_v2_t
         {
-            var randomNumber = new Random();
-            var randomPixelData = (uint*)randomArray;
-            for (var i = 0; i < randomMaxIndex; i++)
+            FourCC = NDIlib.FourCC_type_e.FourCC_type_BGRA,
+            frame_format_type = NDIlib.frame_format_type_e.frame_format_type_progressive,
+            frame_rate_N = launchOptions.FrameRate,
+            frame_rate_D = 1,
+            xres = launchOptions.Width,
+            yres = launchOptions.Height,
+            picture_aspect_ratio = launchOptions.Width / (float)launchOptions.Height,
+            line_stride_in_bytes = 4 * launchOptions.Width,
+            p_data = videoDataBuffer1,
+            timecode = NDIlib.send_timecode_synthesize,
+            p_metadata = nint.Zero,
+            timestamp = 0
+        };
+
+        var audioFrame = audioGenerator.SineFrame;
+
+        Console.WriteLine($"NDI Signal Generator started. Sender name: {launchOptions.SourceName}.");
+        Console.WriteLine($"v2024.3.26.1.");
+        Console.WriteLine("Created by Tractus Events - Grab the source code at https://github.com/tractusevents/NdiTestPatternGenerator\r\n");
+        Console.WriteLine("Ctrl+C to exit.");
+
+
+
+        int videoFrameDirection = 1;
+
+        while (true)
+        {
+            stopwatch.Restart();
+            frames++;
+
+            var time
+                = "Time UTC: " + DateTime.UtcNow.ToString("HH:mm:ss.fff");
+
+            whiteLineVerticalX += whiteLineVerticalXDirection;
+
+            if (whiteLineVerticalX >= launchOptions.Width - 16)
             {
-                randomPixelData[i] = 0xFF000000 | (uint)randomNumber.Next(0xFFFFFF);
+                whiteLineVerticalXDirection = -1;
+            }
+            else if (whiteLineVerticalX <= 0)
+            {
+                whiteLineVerticalXDirection = 1;
             }
 
-            var videoPtr = (uint*)videoData;
+            Buffer.MemoryCopy(videoBgFrameBufferPtr + (videoBgFrameIndex * (frameSizeBytes / 4)), videoPtr, frameSizeBytes, frameSizeBytes);
 
-            var r = 0;
-            var g = 0;
-            var b = 0;
-
-            var whiteLineVerticalX = 0;
-            var whiteLineVerticalXDirection = 1;
-
-            var bDirection = 1;
-            var frames = 0;
-
-            var videoFrame = new NDIlib.video_frame_v2_t
+            if (frames % 10 == 0 && bgVideoFrames > 1)
             {
-                FourCC = NDIlib.FourCC_type_e.FourCC_type_BGRA,
-                frame_format_type = NDIlib.frame_format_type_e.frame_format_type_progressive,
-                frame_rate_N = parserResult.Value.FrameRate,
-                frame_rate_D = 1,
-                xres = videoFrameWidth,
-                yres = videoFrameHeight,
-                picture_aspect_ratio = videoFrameWidth / (float)videoFrameHeight,
-                line_stride_in_bytes = 4 * videoFrameWidth,
-                p_data = videoData,
-                timecode = NDIlib.send_timecode_synthesize,
-                p_metadata = nint.Zero,
-                timestamp = 0
-            };
+                videoBgFrameIndex += videoFrameDirection;
 
-            Console.WriteLine($"NDI Signal Generator started. Sender name: {parserResult.Value.Name}.");
-            Console.WriteLine("Created by Tractus Events - Grab the source code at https://github.com/tractusevents/NdiTestPatternGenerator\r\n");
-            Console.WriteLine("Ctrl+C to exit.");
-
-            var topTwoThird = videoFrameHeight / 3 * 2;
-            var midThird = topTwoThird + (int)(videoFrameHeight / 3 * 0.25);
-            var bottomThird = (int)(videoFrameHeight / 3 * 0.75);
-
-            var colorBarLookupTop = new uint[videoFrameWidth];
-            var colorBarLookupMid = new uint[videoFrameWidth];
-            var colorBarLookupBottom = new uint[videoFrameWidth];
-
-            var seventh = (int)Math.Ceiling(videoFrameWidth / 7.0);
-            var eighteenth = (int)Math.Ceiling(videoFrameWidth / 18.0);
-
-            var colorSwatch = 0xFF848484;
-
-            // Top Third
-            for (var i = 0; i < videoFrameWidth; i++)
-            {
-                colorBarLookupTop[i] = colorSwatch;
-                if (i > 0 && i % seventh == 0)
+                if (videoBgFrameIndex < 0)
                 {
-                    // Switch color
-                    var colorSwatchNumber = i / seventh;
+                    videoBgFrameIndex = 0;
+                    videoFrameDirection = 1;
+                }
+                else if (videoBgFrameIndex >= bgVideoFrames)
+                {
+                    videoBgFrameIndex = bgVideoFrames - 1;
+                    videoFrameDirection = -1;
+                }
 
-                    switch (colorSwatchNumber)
+                videoBgFrameIndex %= bgVideoFrames;
+            }
+
+            if (launchOptions.WhiteBar)
+            {
+                for (var y = 0; y < launchOptions.Height; y++)
+                {
+                    var offset = y * launchOptions.Width + whiteLineVerticalX;
+
+                    for (var x = 0; x < 16; x++)
                     {
-                        case 0:
-                            colorSwatch = 0x848484;
-                            break;
-                        case 1:
-                            colorSwatch = 0x848410;
-                            break;
-                        case 2:
-                            colorSwatch = 0x108484;
-                            break;
-                        case 3:
-                            colorSwatch = 0x108410;
-                            break;
-                        case 4:
-                            colorSwatch = 0x841084;
-                            break;
-                        case 5:
-                            colorSwatch = 0x841010;
-                            break;
-                        case 6:
-                            colorSwatch = 0x101084;
-                            break;
-                        default:
-                            break;
+                        videoPtr[offset + x] = 0xFFFFFFFF;
                     }
-
-                    colorSwatch = colorSwatch | 0xFF000000;
-                }
-            }
-
-            colorSwatch = 0xFF101084;
-            // Mid third
-            for (var i = 0; i < videoFrameWidth; i++)
-            {
-                colorBarLookupMid[i] = colorSwatch;
-                if (i > 0 && i % seventh == 0)
-                {
-                    // Switch color
-                    var colorSwatchNumber = i / seventh;
-
-                    switch (colorSwatchNumber)
-                    {
-                        case 0:
-                            colorSwatch = 0x101084;
-                            break;
-                        case 1:
-                            colorSwatch = 0x101010;
-                            break;
-                        case 2:
-                            colorSwatch = 0x841084;
-                            break;
-                        case 3:
-                            colorSwatch = 0x101010;
-                            break;
-                        case 4:
-                            colorSwatch = 0x108484;
-                            break;
-                        case 5:
-                            colorSwatch = 0x101010;
-                            break;
-                        case 6:
-                            colorSwatch = 0x848484;
-                            break;
-                        default:
-                            break;
-                    }
-
-                    colorSwatch = colorSwatch | 0xFF000000;
-                }
-            }
-
-            colorSwatch = 0xFF10466A;
-
-            // Lower third
-            for (var i = 0; i < videoFrameWidth; i++)
-            {
-                colorBarLookupBottom[i] = colorSwatch;
-                if (i > 0 && i % eighteenth == 0)
-                {
-                    // Switch color
-                    var colorSwatchNumber = i / eighteenth;
-
-                    switch (colorSwatchNumber)
-                    {
-                        case 0:
-                        case 1:
-                        case 2:
-                            colorSwatch = 0x10466A;
-                            break;
-                        case 3:
-                        case 4:
-                        case 5:
-                            colorSwatch = 0xEBEBEB;
-                            break;
-                        case 6:
-                        case 7:
-                        case 8:
-                            colorSwatch = 0x481076;
-                            break;
-                        case 9:
-                        case 10:
-                        case 11:
-                            colorSwatch = 0x101010;
-                            break;
-                        case 12:
-                            colorSwatch = 0x0;
-                            break;
-                        case 13:
-                            colorSwatch = 0x101010;
-                            break;
-                        case 14:
-                            colorSwatch = 0x1A1A1A;
-                            break;
-                        default:
-                            colorSwatch = 0x101010;
-                            break;
-                    }
-
-                    colorSwatch = colorSwatch | 0xFF000000;
                 }
             }
 
 
-            while (true)
-            {
-                stopwatch.Restart();
-                frames++;
 
-                var time
-                    = "Time UTC: " + DateTime.UtcNow.ToString("HH:mm:ss.fff");
+            //for (var y = 0; y < launchOptions.Height; y++)
+            //{
+            //    for (var x = 0; x < launchOptions.Width; x++)
+            //    {
+            //        randomState = (randomState + 1) % randomMaxIndex;
 
-                b += bDirection;
+            //        var offset = y * launchOptions.Width + x;
 
-                whiteLineVerticalX += whiteLineVerticalXDirection;
+            //        // BGRA = ARGB (Endianness?)
 
-                if (whiteLineVerticalX >= videoFrameWidth - 16)
-                {
-                    whiteLineVerticalXDirection = -1;
-                }
-                else if (whiteLineVerticalX <= 0)
-                {
-                    whiteLineVerticalXDirection = 1;
-                }
+            //        if (launchOptions.WhiteBar && x >= whiteLineVerticalX && x <= whiteLineVerticalX + 16)
+            //        {
+            //            videoPtr[offset] = 0xFFFFFFFF;
+            //        }
+            //        else if (useNoise)
+            //        {
+            //            videoPtr[offset] = randomPixelData[randomState];
 
+            //            // Xorshift algo on our random state (which is also the index).
+            //            if (offset % 8192 == 0)
+            //            {
+            //                randomState ^= randomState << 13;
+            //                randomState ^= randomState >> 17;
+            //                randomState ^= randomState << 5;
+            //            }
+            //        }
+            //        else
+            //        {
+            //            videoPtr[offset] = 0xFF000000 | (uint)(r << 16) | (uint)(g << 8) | (uint)b;
+            //        }
+            //    }
 
-                if (b == 255)
-                {
-                    bDirection = -1;
-                }
-                else if (b == 0)
-                {
-                    bDirection = 1;
-                }
+            //    // Xorshift algo on our random state (which is also the index).
+            //    randomState ^= randomState << 13;
+            //    randomState ^= randomState >> 17;
+            //    randomState ^= randomState << 5;
+            //}
 
-                for (var y = 0; y < videoFrameHeight; y++)
-                {
-                    for (var x = 0; x < videoFrameWidth; x++)
-                    {
-                        randomState = (randomState + 1) % randomMaxIndex;
+            RenderText(launchOptions.Width, width, fontPixelData, videoPtr, 32, 32, time);
+            RenderText(launchOptions.Width, width, fontPixelData, videoPtr, 32, 48, $"Frame {frames}");
+            RenderText(launchOptions.Width, width, fontPixelData, videoPtr, 32, 80, $"NDI Sender Name: {launchOptions.SourceName}");
+            RenderText(launchOptions.Width, width, fontPixelData, videoPtr, 32, 96, $"Custom Machine Name: {launchOptions.MachineName}");
+            stopwatch.Stop();
 
-                        var offset = y * videoFrameWidth + x;
+            averageRunTime += stopwatch.ElapsedMilliseconds;
+            averageRunTime = averageRunTime / 2;
 
-                        // BGRA = ARGB (Endianness?)
+            maxRunTime = stopwatch.ElapsedMilliseconds > maxRunTime ? stopwatch.ElapsedMilliseconds : maxRunTime;
 
-                        if (displayWhiteLine && x >= whiteLineVerticalX && x <= whiteLineVerticalX + 16)
-                        {
-                            videoPtr[offset] = 0xFFFFFFFF;
-                        }
-                        else if (useColorBar)
-                        {
-                            if (y <= topTwoThird)
-                            {
-                                videoPtr[offset] = colorBarLookupTop[x];
-                            }
-                            else if (y <= midThird)
-                            {
-                                videoPtr[offset] = colorBarLookupMid[x];
-                            }
-                            else
-                            {
-                                videoPtr[offset] = colorBarLookupBottom[x];
-                                // Bottom third.
-                            }
-                        }
-                        else if (useNoise)
-                        {
-                            videoPtr[offset] = randomPixelData[randomState];
+            RenderText(launchOptions.Width, width, fontPixelData, videoPtr, 32, 128, $"Render time: {stopwatch.ElapsedMilliseconds} ms");
+            RenderText(launchOptions.Width, width, fontPixelData, videoPtr, 32, 160 + 16, $"Avg Render time: {averageRunTime} ms");
+            RenderText(launchOptions.Width, width, fontPixelData, videoPtr, 32, 192 + 32, $"Max Render time: {maxRunTime} ms");
 
-                            // Xorshift algo on our random state (which is also the index).
-                            if (offset % 8192 == 0)
-                            {
-                                randomState ^= randomState << 13;
-                                randomState ^= randomState >> 17;
-                                randomState ^= randomState << 5;
-                            }
-                        }
-                        else
-                        {
-                            videoPtr[offset] = 0xFF000000 | (uint)(r << 16) | (uint)(g << 8) | (uint)b;
-                        }
-                    }
+            NDIlib.send_send_audio_v2(senderPtr, ref audioFrame);
 
-                    // Xorshift algo on our random state (which is also the index).
-                    randomState ^= randomState << 13;
-                    randomState ^= randomState >> 17;
-                    randomState ^= randomState << 5;
-                }
-
-
-
-                RenderText(videoFrameWidth, width, fontPixelData, videoPtr, 32, 32, time);
-                RenderText(videoFrameWidth, width, fontPixelData, videoPtr, 32, 48, $"Frame {frames}");
-                RenderText(videoFrameWidth, width, fontPixelData, videoPtr, 32, 80, $"NDI Sender Name: {parserResult.Value.Name}");
-                stopwatch.Stop();
-
-                averageRunTime += stopwatch.ElapsedMilliseconds;
-                averageRunTime = averageRunTime / 2;
-
-                maxRunTime = stopwatch.ElapsedMilliseconds > maxRunTime ? stopwatch.ElapsedMilliseconds : maxRunTime;
-
-                RenderText(videoFrameWidth, width, fontPixelData, videoPtr, 32, 96, $"Render time: {stopwatch.ElapsedMilliseconds} ms");
-                RenderText(videoFrameWidth, width, fontPixelData, videoPtr, 32, 96 + 16, $"Avg Render time: {averageRunTime} ms");
-                RenderText(videoFrameWidth, width, fontPixelData, videoPtr, 32, 96 + 32, $"Max Render time: {maxRunTime} ms");
-
-                NDIlib.send_send_video_v2(senderPtr, ref videoFrame);
-            }
+            NDIlib.send_send_video_v2(senderPtr, ref videoFrame1);
         }
 
-        Marshal.FreeHGlobal(videoData);
+
+        Marshal.FreeHGlobal(videoDataBuffer1);
 
 
         static unsafe void RenderText(
