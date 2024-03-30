@@ -293,6 +293,9 @@ internal class Program
         var maxRunTime = 0l;
 
         var stopwatch = new Stopwatch();
+        var ndiSendStopWatch = new Stopwatch();
+        var maxSendTime = 0l;
+        var averageSendTime = 0l;
 
         var frameSizeBytes = launchOptions.Width * launchOptions.Height * 4;
 
@@ -334,14 +337,21 @@ internal class Program
 
 
         int videoFrameDirection = 1;
+        int framesSentInLastSecond = 0;
+        int framesSentInLastSecondReport = 0;
+        var lastFrameLoopCalcTime = DateTime.UtcNow;
+
+
 
         while (true)
         {
             stopwatch.Restart();
             frames++;
+            framesSentInLastSecond++;
 
+            var now = DateTime.UtcNow;
             var time
-                = "Time UTC: " + DateTime.UtcNow.ToString("HH:mm:ss.fff");
+                = "Time UTC: " + now.ToString("HH:mm:ss.fff");
 
             whiteLineVerticalX += whiteLineVerticalXDirection;
 
@@ -442,9 +452,29 @@ internal class Program
             RenderText(launchOptions.Width, width, fontPixelData, videoPtr, 32, 160 + 16, $"Avg Render time: {averageRunTime} ms");
             RenderText(launchOptions.Width, width, fontPixelData, videoPtr, 32, 192 + 32, $"Max Render time: {maxRunTime} ms");
 
+            if(now.Subtract(lastFrameLoopCalcTime).TotalSeconds >= 1.0) 
+            {
+                lastFrameLoopCalcTime = now;
+                framesSentInLastSecondReport = framesSentInLastSecond;
+                framesSentInLastSecond = 0;
+            }
+
+            RenderText(launchOptions.Width, width, fontPixelData, videoPtr, 32, 192 + 48, $"Frames Sent to NDI Last Second: {framesSentInLastSecondReport}");
+            RenderText(launchOptions.Width, width, fontPixelData, videoPtr, 32, 192 + 64, $"NDI Send Time: {ndiSendStopWatch.ElapsedMilliseconds} ms");
+            RenderText(launchOptions.Width, width, fontPixelData, videoPtr, 32, 192 + 80, $"Avg: {averageSendTime} ms, Max: {maxSendTime} ms");
+
+            ndiSendStopWatch.Restart();
             NDIlib.send_send_audio_v2(senderPtr, ref audioFrame);
 
+            // This basically acts as our VSYNC as this is a blocking call. Fine.
             NDIlib.send_send_video_v2(senderPtr, ref videoFrame1);
+            ndiSendStopWatch.Stop();
+            
+            averageSendTime += ndiSendStopWatch.ElapsedMilliseconds;
+            averageSendTime /= 2;
+            maxSendTime = ndiSendStopWatch.ElapsedMilliseconds > maxSendTime ? ndiSendStopWatch.ElapsedMilliseconds : maxSendTime;
+
+
         }
 
 

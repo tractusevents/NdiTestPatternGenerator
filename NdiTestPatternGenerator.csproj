@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NDILibDotNetCoreBase" Version="2023.11.7.3" />
+    <PackageReference Include="NDILibDotNetCoreBase" Version="2023.12.20.2" />
   </ItemGroup>
 
   <ItemGroup>
