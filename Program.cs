@@ -11,7 +11,8 @@ public class LaunchOptions
 {
     public int Width;
     public int Height;
-    public int FrameRate;
+    public int FrameRateN;
+    public int FrameRateD = 1;
     public int AudioChannels;
     public int AudioRate;
     public string SourceName;
@@ -51,7 +52,7 @@ internal class Program
         }
         else
         {
-            Console.Write("Use preset (4k60, 1080p60, 1080p30, 720, or empty for none) >");
+            Console.Write("Use preset (4k60, 1080p60, 1080p59 (for 59.94 fps), 1080p30, 1080p29 (for 29.97 fps), 720, or empty for none) >");
             preset = Console.ReadLine();
         }
 
@@ -59,7 +60,7 @@ internal class Program
         {
             toReturn.Width = 3840;
             toReturn.Height = 2160;
-            toReturn.FrameRate = 60;
+            toReturn.FrameRateN = 60;
             toReturn.WhiteBar = true;
             toReturn.Mode = "colorbar";
         }
@@ -67,7 +68,7 @@ internal class Program
         {
             toReturn.Width = 3840;
             toReturn.Height = 2160;
-            toReturn.FrameRate = 60;
+            toReturn.FrameRateN = 60;
             toReturn.WhiteBar = true;
             toReturn.Mode = "blue";
         }
@@ -75,7 +76,16 @@ internal class Program
         {
             toReturn.Width = 1920;
             toReturn.Height = 1080;
-            toReturn.FrameRate = 60;
+            toReturn.FrameRateN = 60;
+            toReturn.WhiteBar = true;
+            toReturn.Mode = "colorbar";
+        }
+        else if (preset == "1080p59")
+        {
+            toReturn.Width = 1920;
+            toReturn.Height = 1080;
+            toReturn.FrameRateN = 60000;
+            toReturn.FrameRateD = 1001;
             toReturn.WhiteBar = true;
             toReturn.Mode = "colorbar";
         }
@@ -83,7 +93,16 @@ internal class Program
         {
             toReturn.Width = 1920;
             toReturn.Height = 1080;
-            toReturn.FrameRate = 30;
+            toReturn.FrameRateN = 30;
+            toReturn.WhiteBar = true;
+            toReturn.Mode = "colorbar";
+        }
+        else if (preset == "1080p29")
+        {
+            toReturn.Width = 1920;
+            toReturn.Height = 1080;
+            toReturn.FrameRateN = 30000;
+            toReturn.FrameRateD = 1001;
             toReturn.WhiteBar = true;
             toReturn.Mode = "colorbar";
         }
@@ -91,7 +110,7 @@ internal class Program
         {
             toReturn.Width = 1280;
             toReturn.Height = 720;
-            toReturn.FrameRate = 60;
+            toReturn.FrameRateN = 60;
             toReturn.WhiteBar = true;
             toReturn.Mode = "colorbar";
         }
@@ -141,7 +160,7 @@ internal class Program
 
             toReturn.Width = videoFrameWidth;
             toReturn.Height = videoFrameHeight;
-            toReturn.FrameRate = frameRate;
+            toReturn.FrameRateN = frameRate;
             toReturn.WhiteBar = movingBar;
             toReturn.Mode = mode;
 
@@ -315,8 +334,8 @@ internal class Program
         {
             FourCC = NDIlib.FourCC_type_e.FourCC_type_BGRA,
             frame_format_type = NDIlib.frame_format_type_e.frame_format_type_progressive,
-            frame_rate_N = launchOptions.FrameRate,
-            frame_rate_D = 1,
+            frame_rate_N = launchOptions.FrameRateN,
+            frame_rate_D = launchOptions.FrameRateD,
             xres = launchOptions.Width,
             yres = launchOptions.Height,
             picture_aspect_ratio = launchOptions.Width / (float)launchOptions.Height,
@@ -330,7 +349,7 @@ internal class Program
         var audioFrame = audioGenerator.SineFrame;
 
         Console.WriteLine($"NDI Signal Generator started. Sender name: {launchOptions.SourceName}.");
-        Console.WriteLine($"v2024.3.26.1.");
+        Console.WriteLine($"v2024.9.3.1.");
         Console.WriteLine("Created by Tractus Events - Grab the source code at https://github.com/tractusevents/NdiTestPatternGenerator\r\n");
         Console.WriteLine("Ctrl+C to exit.");
 
@@ -396,46 +415,6 @@ internal class Program
                     }
                 }
             }
-
-
-
-            //for (var y = 0; y < launchOptions.Height; y++)
-            //{
-            //    for (var x = 0; x < launchOptions.Width; x++)
-            //    {
-            //        randomState = (randomState + 1) % randomMaxIndex;
-
-            //        var offset = y * launchOptions.Width + x;
-
-            //        // BGRA = ARGB (Endianness?)
-
-            //        if (launchOptions.WhiteBar && x >= whiteLineVerticalX && x <= whiteLineVerticalX + 16)
-            //        {
-            //            videoPtr[offset] = 0xFFFFFFFF;
-            //        }
-            //        else if (useNoise)
-            //        {
-            //            videoPtr[offset] = randomPixelData[randomState];
-
-            //            // Xorshift algo on our random state (which is also the index).
-            //            if (offset % 8192 == 0)
-            //            {
-            //                randomState ^= randomState << 13;
-            //                randomState ^= randomState >> 17;
-            //                randomState ^= randomState << 5;
-            //            }
-            //        }
-            //        else
-            //        {
-            //            videoPtr[offset] = 0xFF000000 | (uint)(r << 16) | (uint)(g << 8) | (uint)b;
-            //        }
-            //    }
-
-            //    // Xorshift algo on our random state (which is also the index).
-            //    randomState ^= randomState << 13;
-            //    randomState ^= randomState >> 17;
-            //    randomState ^= randomState << 5;
-            //}
 
             RenderText(launchOptions.Width, width, fontPixelData, videoPtr, 32, 32, time);
             RenderText(launchOptions.Width, width, fontPixelData, videoPtr, 32, 48, $"Frame {frames}");

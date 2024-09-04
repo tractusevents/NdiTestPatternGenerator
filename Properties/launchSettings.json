@@ -2,7 +2,7 @@
   "profiles": {
     "NdiTestPatternGenerator": {
       "commandName": "Project",
-      "commandLineArgs": "-p=4k60b -s=Source2 -nm "
+      "commandLineArgs": "-p=1080p59 -s=Source2 -nm "
     }
   }
 }
