@@ -19,6 +19,7 @@ public class LaunchOptions
     public string MachineName;
     public string Mode;
     public bool WhiteBar;
+    public bool EnableAudio;
 
 }
 
@@ -26,6 +27,8 @@ internal class Program
 {
     private static LaunchOptions GetLaunchOptions(string[] args)
     {
+        var enableAudio = !args.Any(x => x.StartsWith("-na"));
+
         var knownMachineName = args.Any(x => x.StartsWith("-m="))
             ? args.First(x => x.StartsWith("-m=")).Split('=')[1]
             : string.Empty;
@@ -42,6 +45,7 @@ internal class Program
             SourceName = knownSourceName,
             AudioChannels = 2,
             AudioRate = 48000,
+            EnableAudio = enableAudio,
         };
 
         var preset = string.Empty;
@@ -349,7 +353,7 @@ internal class Program
         var audioFrame = audioGenerator.SineFrame;
 
         Console.WriteLine($"NDI Signal Generator started. Sender name: {launchOptions.SourceName}.");
-        Console.WriteLine($"v2024.9.3.1.");
+        Console.WriteLine($"v2024.9.3.2.");
         Console.WriteLine("Created by Tractus Events - Grab the source code at https://github.com/tractusevents/NdiTestPatternGenerator\r\n");
         Console.WriteLine("Ctrl+C to exit.");
 
@@ -443,7 +447,10 @@ internal class Program
             RenderText(launchOptions.Width, width, fontPixelData, videoPtr, 32, 192 + 80, $"Avg: {averageSendTime} ms, Max: {maxSendTime} ms");
 
             ndiSendStopWatch.Restart();
-            NDIlib.send_send_audio_v2(senderPtr, ref audioFrame);
+            if (launchOptions.EnableAudio)
+            {
+                NDIlib.send_send_audio_v2(senderPtr, ref audioFrame);
+            }
 
             // This basically acts as our VSYNC as this is a blocking call. Fine.
             NDIlib.send_send_video_v2(senderPtr, ref videoFrame1);

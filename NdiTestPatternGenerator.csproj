@@ -9,7 +9,7 @@
 	  <ApplicationIcon>testpatternlogo.ico</ApplicationIcon>
 	  <Title>Tractus Test Pattern Generator for NDI</Title>
 	  <Company>Tractus Events by Northern HCI Solutions Inc.</Company>
-	  <AssemblyVersion>2023.11.14.1</AssemblyVersion>
+	  <AssemblyVersion>2024.9.3.2</AssemblyVersion>
 	  <PackageIcon>testpatternlogo.png</PackageIcon>
 	  <Version>$(AssemblyVersion)</Version>
 	  <FileVersion>$(AssemblyVersion)</FileVersion>
